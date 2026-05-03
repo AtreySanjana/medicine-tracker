@@ -1,0 +1,11 @@
+{
+  "name": "medtracker",
+  "script": "server.js",
+  "cwd": "D:\\Tech\\Medicine Tracker",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "autorestart": true,
+  "max_restarts": 5,
+  "min_uptime": "10s"
+}

@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedTracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F7F5F0;
+      --surface: #FFFFFF;
+      --surface2: #F0EDE6;
+      --border: #E2DDD5;
+      --border2: #C8C2B8;
+      --text: #1A1814;
+      --text2: #6B6560;
+      --text3: #9B9690;
+      --green: #2D7A5F;
+      --green-light: #E3F5EE;
+      --green-mid: #A8DCC8;
+      --red: #C0392B;
+      --red-light: #FDECEA;
+      --amber: #B45309;
+      --amber-light: #FEF3C7;
+      --accent: #5B4FCF;
+      --accent-light: #EEEDFC;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Layout */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 260px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .main {
+      margin-left: 260px;
+      flex: 1;
+      padding: 2.5rem 2rem;
+      max-width: 900px;
+    }
+
+    /* Sidebar */
+    .logo {
+      font-family: 'Lora', serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-pill {
+      width: 28px; height: 28px;
+      background: var(--accent-light);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .logo-sub { font-size: 11px; color: var(--text3); margin-bottom: 2rem; }
+
+    .sidebar-section { margin-bottom: 2rem; }
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 0.75rem;
+    }
+
+    .cal-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 0.75rem; }
+    .cal-nav button {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      width: 28px; height: 28px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text2);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .cal-nav button:hover { background: var(--border); color: var(--text); }
+    .cal-month { flex: 1; font-size: 13px; font-weight: 500; text-align: center; color: var(--text); }
+
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+    .cal-dow {
+      font-size: 10px; color: var(--text3);
+      text-align: center; padding: 4px 0;
+      font-weight: 500;
+    }
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      color: var(--text2);
+    }
+    .cal-day:hover { background: var(--surface2); color: var(--text); }
+    .cal-day.today { background: var(--surface2); color: var(--accent); font-weight: 500; }
+    .cal-day.selected { background: var(--accent); color: #fff !important; font-weight: 500; }
+    .cal-day.empty { cursor: default; }
+    .cal-day.empty:hover { background: transparent; }
+    .cal-day .dot {
+      position: absolute;
+      bottom: 2px; left: 50%;
+      transform: translateX(-50%);
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+    .cal-day.selected .dot { background: rgba(255,255,255,0.7); }
+    .cal-day.has-missed {
+      background: var(--red-light);
+      color: var(--red);
+    }
+    .cal-day.has-missed.today {
+      background: linear-gradient(135deg, var(--red-light) 0%, var(--red-light) 50%, #fff 50%, #fff 100%);
+    }
+    .missed-dot {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 4px;
+      height: 4px;
+      background: var(--red);
+      border-radius: 50%;
+    }
+
+    .today-link {
+      display: block;
+      text-align: center;
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      margin-top: 6px;
+      text-decoration: none;
+    }
+    .today-link:hover { text-decoration: underline; }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-box {
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+    .stat-box-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-box-val { font-size: 28px; font-weight: 500; color: var(--text); margin-top: 2px; }
+    .stat-box-val.green { color: var(--green); }
+    .stat-box-val.amber { color: var(--amber); }
+
+    .sidebar-footer { margin-top: auto; padding-top: 1rem; }
+    .add-med-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: opacity 0.15s;
+    }
+    .add-med-btn:hover { opacity: 0.88; }
+
+    /* Main content */
+    .page-header { margin-bottom: 2rem; }
+    .page-date {
+      font-family: 'Lora', serif;
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .page-date-sub { font-size: 13px; color: var(--text3); margin-top: 4px; }
+
+    .progress-row { display: flex; align-items: center; gap: 12px; margin: 1rem 0; }
+    .progress-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), #4CAF8A);
+      border-radius: 3px;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .progress-text { font-size: 13px; color: var(--text2); white-space: nowrap; }
+
+    .dashboard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+    }
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .dashboard-title {
+      font-family: 'Lora', serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .dashboard-sub {
+      font-size: 13px;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+    .dashboard-date { text-align: right; }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 1.25rem;
+    }
+    .dashboard-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+    }
+    .dashboard-cards .stat-box {
+      padding: 9px 10px;
+    }
+    .dashboard-cards .stat-box-val {
+      font-size: 28px;
+    }
+    .dashboard-progress {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .dashboard-panel {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      min-height: 120px;
+    }
+    .sidebar-tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+    .sidebar-tabs .tab-btn {
+      width: 100%;
+      text-align: left;
+      padding: 10px 14px;
+      border-radius: 999px;
+    }
+    .tab-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+    }
+    .details-panel.hidden {
+      display: none;
+    }
+    .medications-panel { margin-top: 1rem; }
+
+    @media (max-width: 900px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .dashboard-date { text-align: left; }
+    }
+
+    @media (max-width: 640px) {
+      .dashboard-header { flex-direction: column; align-items: stretch; }
+      .dashboard-cards { grid-template-columns: 1fr; }
+      .progress-row { flex-direction: column; align-items: stretch; }
+      .progress-text { text-align: right; }
+    }
+
+    /* Med cards */
+    .section-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin: 1.75rem 0 0.75rem;
+    }
+
+    .med-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      margin-bottom: 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: var(--shadow);
+    }
+    .med-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .med-card.all-done { border-color: var(--green-mid); }
+    .med-card.inactive {
+      opacity: 0.5;
+      box-shadow: none;
+    }
+
+    .med-row { display: flex; align-items: center; gap: 12px; }
+    .med-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .med-name-wrap { flex: 1; }
+    .med-name { font-weight: 500; font-size: 14px; color: var(--text); }
+    .med-meta { font-size: 11px; color: var(--text3); margin-top: 1px; }
+    .med-note { font-size: 11px; color: var(--text2); font-style: italic; margin-top: 2px; }
+
+    .med-badge {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .badge-active { background: #E3F5EE; color: #2D7A5F; }
+    .badge-done { background: #D1FAE5; color: #065F46; }
+    .badge-ended { background: var(--surface2); color: var(--text3); }
+    .badge-future { background: var(--amber-light); color: var(--amber); }
+
+    .med-actions { display: flex; gap: 4px; }
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      width: 28px; height: 28px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      color: var(--text3);
+      transition: all 0.15s;
+    }
+    .icon-btn:hover { background: var(--surface2); color: var(--text); }
+    .icon-btn.delete:hover { background: var(--red-light); color: var(--red); }
+    .icon-btn.archive { color: #0F766E; }
+    .icon-btn.archive:hover { background: #D1FAE5; color: #064E3B; }
+    .icon-btn.archive.unarchive:hover { background: #EEF2FF; color: #4338CA; }
+
+    .dose-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .dose-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text2);
+      transition: all 0.15s;
+    }
+    .dose-btn:hover { border-color: var(--border2); background: var(--surface2); color: var(--text); }
+    .dose-btn.taken {
+      background: var(--green-light);
+      border-color: var(--green-mid);
+      color: var(--green);
+    }
+    .dose-btn .check { font-size: 11px; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text3);
+    }
+    .empty-state-icon { font-size: 40px; margin-bottom: 1rem; opacity: 0.5; }
+    .empty-state p { font-size: 14px; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 2rem;
+      width: 520px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(16px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-title {
+      font-family: 'Lora', serif;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+
+    label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 4px; }
+    input[type="text"], input[type="date"], select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 1rem;
+    }
+    input[type="text"]:focus, input[type="date"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .phase-block {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    .phase-block-title {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.75rem;
+    }
+    .remove-phase {
+      position: absolute;
+      top: 8px; right: 8px;
+    }
+
+    .times-check { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .time-chip {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--text2);
+      user-select: none;
+      transition: all 0.15s;
+    }
+    .meal-timing-group {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 1rem;
+    }
+    .meal-timing-row {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 0;
+    }
+    .meal-timing-row span {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .meal-timing-row select {
+      width: 100%;
+    }
+    .time-chip.selected { background: var(--accent-light); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+    .time-chip.selected {
+      background: var(--accent-light);
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .add-phase-btn {
+      background: none;
+      border: 1px dashed var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      width: 100%;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      color: var(--text3);
+      cursor: pointer;
+      margin-bottom: 1.25rem;
+      transition: all 0.15s;
+    }
+    .add-phase-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+    .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.5rem; }
+    .btn {
+      padding: 9px 20px;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; border: none; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-ghost { background: none; border: 1px solid var(--border); color: var(--text2); }
+    .btn-ghost:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+
+    .notification-banner {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 300;
+      min-width: 280px;
+      max-width: calc(100vw - 2rem);
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+      color: #fff;
+      font-weight: 500;
+      text-align: center;
+    }
+    .notification-banner.visible { display: block; }
+    .notification-banner.error { background: #C0392B; }
+    .notification-banner.success { background: #2D7A5F; }
+
+    .backup-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 0.75rem;
+    }
+
+    /* Confirm dialog */
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .confirm-overlay.open { display: flex; }
+    .confirm-box {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      width: 340px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .confirm-title { font-weight: 500; font-size: 15px; margin-bottom: 0.5rem; }
+    .confirm-msg { font-size: 13px; color: var(--text2); margin-bottom: 1.25rem; }
+    .confirm-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-danger { background: var(--red); color: #fff; border: none; }
+    .btn-danger:hover { opacity: 0.88; }
+
+    /* Color picker */
+    .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .swatch {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .swatch.selected { border-color: var(--text); transform: scale(1.15); }
+
+    /* Time-based view */
+    .time-view {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+    .time-view-header {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .time-view-icon {
+      font-size: 18px;
+    }
+    .time-meds {
+      display: grid;
+      gap: 12px;
+    }
+    .time-med-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    .time-med-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .time-med-info {
+      flex: 1;
+    }
+    .time-med-name {
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .time-med-note {
+      font-size: 12px;
+      color: var(--text3);
+    }
+    .time-med-action {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .time-med-btn {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .time-med-btn:hover { opacity: 0.88; }
+    .time-med-btn.taken {
+      background: var(--green-mid);
+      cursor: default;
+    }
+    .time-med-btn.taken:hover { opacity: 1; }
+    .time-empty {
+      text-align: center;
+      color: var(--text3);
+      font-style: italic;
+      padding: 2rem;
+    }
+
+    /* Missed Doses */
+    .missed-doses-section {
+      background: var(--red-light);
+      border: 1px solid var(--red);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      margin-top: 0.75rem;
+    }
+    .missed-doses-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--red);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .missed-dose-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .missed-dose-item:last-child { margin-bottom: 0; }
+    .missed-dose-info {
+      margin-bottom: 0.75rem;
+    }
+    .missed-dose-date {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+    .missed-dose-recovery {
+      font-size: 11px;
+      color: var(--text2);
+      line-height: 1.4;
+    }
+    .missed-dose-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-small {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-small:hover { opacity: 0.88; }
+    .btn-small.btn-secondary {
+      background: var(--surface2);
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .btn-small.btn-secondary:hover {
+      background: var(--border);
+    }
+
+    /* Course Information */
+    .course-info {
+      display: flex;
+      gap: 16px;
+      margin: 0.75rem 0;
+      padding: 0.5rem 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .course-info-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+    }
+    .course-info-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .course-info-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="notification-banner" id="notificationBanner"></div>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="logo-pill">💊</span>
+      MedTracker
+    </div>
+    <div class="logo-sub">Personal medicine log</div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">View</div>
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tabDashboard" onclick="showTab('dashboard')">Dashboard</button>
+        <button class="tab-btn" id="tabDetails" onclick="showTab('details')">Details</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Calendar</div>
+      <div class="cal-nav">
+        <button onclick="prevMonth()">&#8249;</button>
+        <span class="cal-month" id="calMonth"></span>
+        <button onclick="nextMonth()">&#8250;</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <a class="today-link" onclick="goToday()">Jump to today</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Overview</div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-box-label">Total doses</div>
+          <div class="stat-box-val" id="sidebarStatTotal">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Taken</div>
+          <div class="stat-box-val green" id="sidebarStatTaken">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Remaining</div>
+          <div class="stat-box-val amber" id="sidebarStatRemain">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Active meds</div>
+          <div class="stat-box-val" id="sidebarStatActive">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="add-med-btn" onclick="openAddModal()">
+        <span>+</span> Add medication
+      </button>
+      <div class="backup-group">
+        <button class="btn btn-ghost" onclick="exportBackup()" type="button">Export backup</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('backupInput').click()" type="button">Import backup</button>
+        <input type="file" id="backupInput" accept="application/json" style="display:none" onchange="importBackup(event)" />
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <section class="dashboard" id="dashboardSection">
+      <div class="dashboard-header">
+        <div>
+          <div class="dashboard-title">Today's dashboard</div>
+          <div class="dashboard-sub">A quick view of today's medication progress</div>
+        </div>
+        <div class="dashboard-date">
+          <div class="page-date" id="pageDate"></div>
+          <div class="page-date-sub" id="pageDateSub"></div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="dashboard-cards">
+          <div class="stat-box">
+            <div class="stat-box-label">Total doses</div>
+            <div class="stat-box-val" id="statTotal">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-label">Taken</div>
+            <div class="stat-box-val green" id="statTaken">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-label">Remaining</div>
+            <div class="stat-box-val amber" id="statRemain">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-label">Active meds</div>
+            <div class="stat-box-val" id="statActive">—</div>
+          </div>
+        </div>
+
+        <div class="dashboard-progress">
+          <div class="progress-row">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+            <span class="progress-text" id="progressText">0 / 0 doses</span>
+          </div>
+          <div class="dashboard-panel" id="timeView"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="medications-panel details-panel hidden" id="detailsPanel">
+      <div class="section-label">Medication schedule</div>
+      <div id="medList"></div>
+    </section>
+  </main>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="medModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Add medication</div>
+
+    <label>Medicine name</label>
+    <input type="text" id="formName" placeholder="e.g. Metformin 500mg" />
+
+    <label>Colour</label>
+    <div class="color-swatches" id="colorSwatches"></div>
+
+    <div id="phasesContainer"></div>
+
+    <button class="add-phase-btn" onclick="addPhase()">+ Add another phase / schedule</button>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMed()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm delete -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">Delete medication?</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = [
+  { bg: '#EDE9FE', text: '#4C1D95', dot: '#7C3AED' },
+  { bg: '#DBEAFE', text: '#1E3A8A', dot: '#2563EB' },
+  { bg: '#D1FAE5', text: '#064E3B', dot: '#059669' },
+  { bg: '#FEF3C7', text: '#92400E', dot: '#D97706' },
+  { bg: '#FCE7F3', text: '#831843', dot: '#DB2777' },
+  { bg: '#F3F4F6', text: '#374151', dot: '#6B7280' },
+  { bg: '#FEE2E2', text: '#7F1D1D', dot: '#DC2626' },
+  { bg: '#ECFDF5', text: '#065F46', dot: '#10B981' },
+  { bg: '#FFF7ED', text: '#7C2D12', dot: '#EA580C' },
+  { bg: '#F0FDF4', text: '#14532D', dot: '#16A34A' },
+];
+
+const TIME_OPTIONS = ['Morning', 'Afternoon', 'Night'];
+
+let medications = [];
+let logs = {};
+let missedDoses = {};
+let currentDate = todayStr();
+let calMonth = new Date();
+let editingMedId = null;
+let deleteTarget = null;
+let formPhases = [];
+let selectedColor = 0;
+let activeTab = 'dashboard';
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getCurrentTimeSlot() {
+  const hour = new Date().getHours();
+  if (hour >= 8 && hour < 12) return 'Morning';
+  if (hour >= 12 && hour < 18) return 'Afternoon';
+  return 'Night'; // 6pm-12am and 12am-8am
+}
+
+function getTimeSlotIcon(slot) {
+  switch (slot) {
+    case 'Morning': return '🌅';
+    case 'Afternoon': return '☀️';
+    case 'Night': return '🌙';
+    default: return '💊';
+  }
+}
+
+function showNotification(message, type = 'error') {
+  const banner = document.getElementById('notificationBanner');
+  banner.textContent = message;
+  banner.className = `notification-banner visible ${type}`;
+  clearTimeout(window.notificationTimeout);
+  window.notificationTimeout = setTimeout(clearNotification, 5000);
+}
+
+function showError(message) {
+  showNotification(message, 'error');
+}
+
+function showSuccess(message) {
+  showNotification(message, 'success');
+}
+
+function getFoodTimingLabel(foodTiming) {
+  if (!foodTiming || foodTiming === 'Any') return '';
+  return `${foodTiming.toLowerCase()} food`;
+}
+
+function getDoseLabel(time, foodTiming) {
+  const label = getFoodTimingLabel(foodTiming);
+  return label ? `${time} (${label})` : time;
+}
+
+function doseKey(date, medId, time, foodTiming = 'Any') {
+  return `${date}__${medId}__${time}__${foodTiming || 'Any'}`;
+}
+
+function oldDoseKey(date, medId, time) {
+  return `${date}__${medId}__${time}`;
+}
+
+function clearNotification() {
+  const banner = document.getElementById('notificationBanner');
+  banner.className = 'notification-banner';
+  banner.textContent = '';
+}
+
+function downloadJSON(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function exportBackup() {
+  try {
+    const backup = await api('GET', '/api/backup');
+    downloadJSON(backup, 'medtracker-backup.json');
+    showSuccess('Backup exported successfully.');
+  } catch (error) {
+    console.error(error);
+    showError('Backup export failed. Please try again.');
+  }
+}
+
+async function importBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+    await api('POST', '/api/restore-backup', payload);
+    showSuccess('Backup imported successfully. Reloading data...');
+    await loadAll();
+  } catch (error) {
+    console.error(error);
+    showError('Import failed. Make sure the file is a valid MedTracker backup.');
+  } finally {
+    event.target.value = '';
+  }
+}
+
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const errorMessage = data?.error || `${res.status} ${res.statusText}`;
+    throw new Error(errorMessage);
+  }
+  return data;
+}
+
+async function loadAll() {
+  try {
+    [medications, logs, missedDoses] = await Promise.all([
+      api('GET','/api/medications'),
+      api('GET','/api/logs'),
+      api('GET','/api/missed-doses')
+    ]);
+    render();
+  } catch (error) {
+    console.error(error);
+    showError('Unable to load your data. Please refresh the page or check the server.');
+  }
+}
+
+async function toggleDose(medId, time, foodTiming = 'Any') {
+  const key = doseKey(currentDate, medId, time, foodTiming);
+  const previousValue = logs[key];
+  logs[key] = !previousValue;
+  render(); // optimistic
+  try {
+    await api('POST', '/api/logs/toggle', { date: currentDate, medId, time, foodTiming });
+  } catch (error) {
+    logs[key] = previousValue;
+    render();
+    console.error(error);
+    showError('Unable to update dose status. Please try again.');
+  }
+}
+
+async function markMissedDoseHandled(date, medId, time, foodTiming = 'Any') {
+  try {
+    await api('POST', '/api/missed-doses/mark-handled', { date, medId, time, foodTiming });
+    missedDoses[doseKey(date, medId, time, foodTiming)].handled = true;
+    render();
+  } catch (error) {
+    console.error(error);
+    showError('Unable to mark missed dose handled. Please try again.');
+  }
+}
+
+async function carryOverDose(date, medId, time, foodTiming = 'Any', targetDate) {
+  try {
+    await api('POST', '/api/missed-doses/carry-over', { date, medId, time, foodTiming, targetDate });
+    const key = doseKey(date, medId, time, foodTiming);
+    missedDoses[key].carriedOver = true;
+    missedDoses[key].carriedOverTo = targetDate;
+    missedDoses[key].handled = true;
+    const carryOverKey = doseKey(targetDate, medId, time, foodTiming);
+    logs[carryOverKey] = false;
+    render();
+  } catch (error) {
+    console.error(error);
+    showError('Unable to carry over the missed dose. Please try again.');
+  }
+}
+
+function getMissedDosesForMed(medId) {
+  return Object.values(missedDoses).filter(m => m.medId === medId && !m.handled);
+}
+
+function getUnresolvedMissedDoses() {
+  return Object.values(missedDoses).filter(m => !m.handled);
+}
+
+function isTaken(medId, time, foodTiming = 'Any') {
+  const key = doseKey(currentDate, medId, time, foodTiming);
+  if (logs[key] === true) return true;
+  if (foodTiming === 'Any') {
+    return logs[oldDoseKey(currentDate, medId, time)] === true;
+  }
+  return false;
+}
+
+function getActivePhase(med) {
+  if (med.archived) return null;
+  for (const ph of med.phases) {
+    if (currentDate >= ph.start && (ph.end === null || currentDate <= ph.end)) return ph;
+  }
+  return null;
+}
+
+function isCompleted(med) {
+  return med.phases.every(ph => ph.end && currentDate > ph.end);
+}
+
+function isFuture(med) {
+  return med.phases.every(ph => currentDate < ph.start);
+}
+
+function formatDateHeader(ds) {
+  const [y,m,d] = ds.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const today = todayStr();
+  const yesterday = offsetDate(today, -1);
+  const tomorrow = offsetDate(today, 1);
+  let prefix = '';
+  if (ds === today) prefix = 'Today, ';
+  else if (ds === yesterday) prefix = 'Yesterday, ';
+  else if (ds === tomorrow) prefix = 'Tomorrow, ';
+  return {
+    main: prefix + days[date.getDay()] + ' ' + d,
+    sub: months[m-1] + ' ' + y
+  };
+}
+
+function offsetDate(ds, n) {
+  const [y,m,d] = ds.split('-').map(Number);
+  const date = new Date(y, m-1, d + n);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function formatDateForDisplay(ds) {
+  const [y,m,d] = ds.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  const today = todayStr();
+  const yesterday = offsetDate(today, -1);
+
+  if (ds === today) return 'Today';
+  if (ds === yesterday) return 'Yesterday';
+
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  return `${days[date.getDay()]} ${d} ${months[m-1]}`;
+}
+
+function render() {
+  renderHeader();
+  renderTimeView();
+  renderMeds();
+  renderCalendar();
+  showTab(activeTab);
+}
+
+function showTab(tab) {
+  activeTab = tab;
+  document.getElementById('detailsPanel').classList.toggle('hidden', tab !== 'details');
+  document.getElementById('dashboardSection').classList.toggle('hidden', tab !== 'dashboard');
+  document.getElementById('tabDashboard').classList.toggle('active', tab === 'dashboard');
+  document.getElementById('tabDetails').classList.toggle('active', tab === 'details');
+}
+
+function renderHeader() {
+  const { main, sub } = formatDateHeader(currentDate);
+  document.getElementById('pageDate').textContent = main;
+  document.getElementById('pageDateSub').textContent = sub;
+
+  let total = 0, taken = 0;
+  let activeMedCount = 0;
+  for (const med of medications) {
+    const ph = getActivePhase(med);
+    if (ph) {
+      activeMedCount++;
+      total += ph.times.length;
+      for (const t of ph.times) { if (isTaken(med.id, t, ph.foodTiming?.[t] || 'Any')) taken++; }
+    }
+  }
+
+  const unresolvedMissed = getUnresolvedMissedDoses().length;
+  const totalMissed = Object.keys(missedDoses).length;
+
+  const updateStat = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
+  updateStat('statTotal', total);
+  updateStat('sidebarStatTotal', total);
+  updateStat('statTaken', taken);
+  updateStat('sidebarStatTaken', taken);
+  updateStat('statRemain', total - taken);
+  updateStat('sidebarStatRemain', total - taken);
+  updateStat('statActive', activeMedCount);
+  updateStat('sidebarStatActive', activeMedCount);
+  document.getElementById('progressFill').style.width = total > 0 ? Math.round((taken/total)*100)+'%' : '0%';
+  document.getElementById('progressText').textContent = `${taken} / ${total} doses taken${unresolvedMissed > 0 ? ` • ${unresolvedMissed} missed doses` : ''}`;
+}
+
+function renderTimeView() {
+  const container = document.getElementById('timeView');
+  const currentSlot = getCurrentTimeSlot();
+  const slotIcon = getTimeSlotIcon(currentSlot);
+
+  // Get medications active today that have doses for current time slot
+  const currentMeds = medications.filter(med => {
+    const phase = getActivePhase(med);
+    return phase && phase.times.includes(currentSlot);
+  });
+
+  let html = `<div class="time-view">
+    <div class="time-view-header">
+      <span class="time-view-icon">${slotIcon}</span>
+      ${currentSlot} medications
+    </div>`;
+
+  if (currentMeds.length === 0) {
+    html += `<div class="time-empty">No medications scheduled for ${currentSlot.toLowerCase()}.</div>`;
+  } else {
+    html += `<div class="time-meds">`;
+    for (const med of currentMeds) {
+      const color = COLORS.find(c => c.bg === med.color) || COLORS[0];
+      const phase = getActivePhase(med);
+      const foodTiming = phase.foodTiming?.[currentSlot] || 'Any';
+      const taken = isTaken(med.id, currentSlot, foodTiming);
+      const timingLabel = getFoodTimingLabel(foodTiming);
+      const timingText = timingLabel ? `${currentSlot} (${timingLabel})` : currentSlot;
+      const note = phase.note ? `<div class="time-med-note">${phase.note}</div>` : '';
+
+      html += `<div class="time-med-item">
+        <div class="time-med-dot" style="background:${color.dot}"></div>
+        <div class="time-med-info">
+          <div class="time-med-name">${med.name}</div>
+          <div class="time-med-note">${timingText}</div>
+          ${note}
+        </div>
+        <div class="time-med-action">
+          <button class="time-med-btn ${taken ? 'taken' : ''}" onclick="toggleDose('${med.id}','${currentSlot}','${foodTiming}')">
+            ${taken ? '✓ Taken' : 'Mark as taken'}
+          </button>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function renderMeds() {
+  const container = document.getElementById('medList');
+  const archived = medications.filter(m => m.archived);
+  const active = medications.filter(m => !m.archived && getActivePhase(m));
+  const inactive = medications.filter(m => !m.archived && !getActivePhase(m));
+
+  let html = '';
+
+  if (active.length === 0 && inactive.length === 0 && archived.length === 0) {
+    html = `<div class="empty-state"><div class="empty-state-icon">💊</div><p>No medications added yet.<br>Click "Add medication" to get started.</p></div>`;
+  } else {
+    if (active.length > 0) {
+      html += `<div class="section-label">Active on this date</div>`;
+      for (const med of active) html += medCardHTML(med, true);
+    }
+    if (inactive.length > 0) {
+      html += `<div class="section-label">Not active on this date</div>`;
+      for (const med of inactive) html += medCardHTML(med, false);
+    }
+    if (archived.length > 0) {
+      html += `<div class="section-label">Archived medications</div>`;
+      for (const med of archived) html += medCardHTML(med, false, true);
+    }
+  }
+  container.innerHTML = html;
+}
+
+function medCardHTML(med, active, archived = false) {
+  const color = COLORS.find(c => c.bg === med.color) || COLORS[0];
+  const phase = getActivePhase(med);
+  let badge = '';
+  let doseRow = '';
+  let noteHtml = '';
+  let missedHtml = '';
+  let courseInfoHtml = '';
+
+  if (!active) {
+    if (isCompleted(med)) badge = `<span class="med-badge badge-ended">Course complete</span>`;
+    else if (isFuture(med)) badge = `<span class="med-badge badge-future">Not started</span>`;
+    else badge = `<span class="med-badge badge-ended">Inactive</span>`;
+  } else {
+    const takenCount = phase.times.filter(t => isTaken(med.id, t, phase.foodTiming?.[t] || 'Any')).length;
+    const allDone = takenCount === phase.times.length;
+    badge = allDone
+      ? `<span class="med-badge badge-done">✓ All done</span>`
+      : `<span class="med-badge badge-active">Active</span>`;
+
+    if (phase.note) noteHtml = `<div class="med-note">${phase.note}</div>`;
+
+    doseRow = `<div class="dose-row">` +
+      phase.times.map(t => {
+        const foodTiming = phase.foodTiming?.[t] || 'Any';
+        const taken = isTaken(med.id, t, foodTiming);
+        return `<button class="dose-btn ${taken ? 'taken' : ''}" onclick="toggleDose('${med.id}','${t}','${foodTiming}')">
+          ${taken ? '<span class="check">✓</span>' : ''}
+          ${getDoseLabel(t, foodTiming)}
+        </button>`;
+      }).join('') + `</div>`;
+  }
+
+  // Add course information if available
+  if (med.daysLeft !== undefined && med.tabletsRequired !== undefined) {
+    courseInfoHtml = `<div class="course-info">
+      <div class="course-info-item">
+        <span class="course-info-label">Days left:</span>
+        <span class="course-info-value">${med.daysLeft}</span>
+      </div>
+      <div class="course-info-item">
+        <span class="course-info-label">Tablets needed:</span>
+        <span class="course-info-value">${med.tabletsRequired}</span>
+      </div>
+    </div>`;
+  }
+
+  // Add missed doses section
+  const medMissedDoses = getMissedDosesForMed(med.id);
+  if (medMissedDoses.length > 0) {
+    missedHtml = `<div class="missed-doses-section">
+      <div class="missed-doses-header">⚠️ ${medMissedDoses.length} missed dose${medMissedDoses.length > 1 ? 's' : ''}</div>
+      ${medMissedDoses.map(m => `
+        <div class="missed-dose-item">
+          <div class="missed-dose-info">
+            <div class="missed-dose-date">${formatDateForDisplay(m.missedDate)} ${getDoseLabel(m.time, m.foodTiming)}</div>
+            <div class="missed-dose-recovery">${m.recoveryAction}</div>
+          </div>
+          <div class="missed-dose-actions">
+            <button class="btn-small" onclick="carryOverDose('${m.date}','${m.medId}','${m.time}','${m.foodTiming || 'Any'}','${currentDate}')">Carry to today</button>
+            <button class="btn-small btn-secondary" onclick="markMissedDoseHandled('${m.date}','${m.medId}','${m.time}','${m.foodTiming || 'Any'}')">Mark handled</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  const endInfo = phase ? (phase.end ? `ends ${phase.end.slice(5).replace('-','/')}` : 'ongoing') : '';
+  const freqInfo = phase ? `${phase.times.length}x daily${endInfo ? ' · ' + endInfo : ''}` : '';
+  const archiveLabel = archived ? 'Unarchive' : 'Archive';
+  const archiveIcon = archived ? '↩️' : '📦';
+  const archiveClass = archived ? 'archive unarchive' : 'archive';
+
+  return `<div class="med-card ${active && phase && phase.times.every(t => isTaken(med.id,t)) ? 'all-done' : ''} ${!active ? 'inactive' : ''}">
+    <div class="med-row">
+      <div class="med-dot" style="background:${color.dot}"></div>
+      <div class="med-name-wrap">
+        <div class="med-name">${med.name}</div>
+        <div class="med-meta">${freqInfo}${noteHtml}</div>
+      </div>
+      ${badge}
+      <div class="med-actions">
+        ${!archived ? `<button class="icon-btn ${archiveClass}" onclick="toggleArchive('${med.id}', true)" title="Archive">${archiveIcon}</button>` : `<button class="icon-btn ${archiveClass}" onclick="toggleArchive('${med.id}', false)" title="Unarchive">${archiveIcon}</button>`}
+        <button class="icon-btn" onclick="openEditModal('${med.id}')" title="Edit">✏️</button>
+        <button class="icon-btn delete" onclick="askDelete('${med.id}')" title="Delete">🗑️</button>
+      </div>
+    </div>
+    ${courseInfoHtml}
+    ${doseRow}
+    ${missedHtml}
+  </div>`;
+}
+
+// Calendar
+function renderCalendar() {
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('calMonth').textContent = months[m] + ' ' + y;
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const today = todayStr();
+
+  let html = ['S','M','T','W','T','F','S'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  for (let i = 0; i < firstDay; i++) html += `<div class="cal-day empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = ds === today;
+    const isSel = ds === currentDate;
+    const hasDoses = Object.keys(logs).some(k => k.startsWith(ds) && logs[k]);
+    const hasMissedDoses = Object.values(missedDoses).some(m => m.date.startsWith(ds) && !m.handled);
+    html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''} ${hasMissedDoses ? 'has-missed' : ''}" onclick="selectDate('${ds}')">
+      ${d}
+      ${hasDoses && !isSel ? '<span class="dot"></span>' : ''}
+      ${hasMissedDoses && !isSel ? '<span class="missed-dot"></span>' : ''}
+    </div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+function prevMonth() { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); }
+function nextMonth() { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); }
+
+function selectDate(ds) {
+  currentDate = ds;
+  calMonth = new Date(parseInt(ds.split('-')[0]), parseInt(ds.split('-')[1]) - 1, 1);
+  render();
+}
+
+function goToday() {
+  currentDate = todayStr();
+  calMonth = new Date();
+  render();
+}
+
+// Modal
+function buildColorSwatches() {
+  document.getElementById('colorSwatches').innerHTML = COLORS.map((c,i) =>
+    `<div class="swatch ${i === selectedColor ? 'selected' : ''}" style="background:${c.bg}; border-color:${i === selectedColor ? c.dot : 'transparent'}" onclick="selectColor(${i})"></div>`
+  ).join('');
+}
+
+function selectColor(i) {
+  selectedColor = i;
+  buildColorSwatches();
+}
+
+function addPhase(data) {
+  const idx = formPhases.length;
+  formPhases.push(data || { times: ['Morning'], foodTiming: { Morning: 'Any' }, start: todayStr(), end: null, note: '' });
+  renderPhases();
+}
+
+function removePhase(i) {
+  formPhases.splice(i, 1);
+  renderPhases();
+}
+
+function renderPhases() {
+  const container = document.getElementById('phasesContainer');
+  container.innerHTML = formPhases.map((ph, i) => `
+    <div class="phase-block">
+      <div class="phase-block-title">Phase ${i + 1}${formPhases.length > 1 ? ` of ${formPhases.length}` : ''}</div>
+      ${formPhases.length > 1 ? `<button class="icon-btn remove-phase" onclick="removePhase(${i})">✕</button>` : ''}
+
+      <label>Dose times</label>
+      <div class="times-check">
+        ${TIME_OPTIONS.map(t => `
+          <div class="time-chip ${ph.times.includes(t) ? 'selected' : ''}" onclick="toggleTime(${i},'${t}')">
+            ${ph.times.includes(t) ? '✓ ' : ''}${t}
+          </div>`).join('')}
+      </div>
+
+      ${ph.times.length > 0 ? `<div class="meal-timing-group">
+        ${ph.times.map(t => {
+          const value = (ph.foodTiming && ph.foodTiming[t]) || 'Any';
+          return `
+            <div class="meal-timing-row">
+              <span>${t}</span>
+              <select onchange="updatePhaseFoodTiming(${i},'${t}',this.value)">
+                <option value="Any" ${value === 'Any' ? 'selected' : ''}>Any</option>
+                <option value="Before" ${value === 'Before' ? 'selected' : ''}>Before food</option>
+                <option value="After" ${value === 'After' ? 'selected' : ''}>After food</option>
+              </select>
+            </div>`;
+        }).join('')}
+      </div>` : ''}
+
+      <div class="form-row">
+        <div>
+          <label>Start date</label>
+          <input type="date" value="${ph.start || ''}" onchange="updatePhase(${i},'start',this.value)" />
+        </div>
+        <div>
+          <label>End date <span style="color:var(--text3)">(leave empty = ongoing)</span></label>
+          <input type="date" value="${ph.end || ''}" onchange="updatePhase(${i},'end',this.value||null)" />
+        </div>
+      </div>
+
+      <label>Note (optional)</label>
+      <input type="text" value="${ph.note || ''}" placeholder="Any Details..." onchange="updatePhase(${i},'note',this.value)" />
+    </div>
+  `).join('');
+}
+
+function toggleTime(phaseIdx, time) {
+  const ph = formPhases[phaseIdx];
+  if (!ph.foodTiming) ph.foodTiming = {};
+
+  if (ph.times.includes(time)) {
+    if (ph.times.length === 1) return; // must have at least one
+    ph.times = ph.times.filter(t => t !== time);
+    delete ph.foodTiming[time];
+  } else {
+    const order = TIME_OPTIONS;
+    ph.times = order.filter(t => ph.times.includes(t) || t === time);
+    ph.foodTiming[time] = ph.foodTiming[time] || 'Any';
+  }
+  renderPhases();
+}
+
+function updatePhaseFoodTiming(phaseIdx, time, value) {
+  const ph = formPhases[phaseIdx];
+  if (!ph.foodTiming) ph.foodTiming = {};
+  ph.foodTiming[time] = value;
+}
+
+function updatePhase(i, key, val) {
+  formPhases[i][key] = val === '' ? null : val;
+}
+
+function openAddModal() {
+  editingMedId = null;
+  selectedColor = 0;
+  formPhases = [];
+  document.getElementById('formName').value = '';
+  document.getElementById('modalTitle').textContent = 'Add medication';
+  addPhase({ times: ['Morning'], start: todayStr(), end: null, note: '' });
+  buildColorSwatches();
+  document.getElementById('medModal').classList.add('open');
+}
+
+function validatePhases(phases) {
+  if (!phases.length) return 'Please add at least one phase.';
+
+  for (const [index, phase] of phases.entries()) {
+    if (!phase.start) return `Phase ${index + 1} requires a start date.`;
+    if (phase.end && phase.start > phase.end) return `Phase ${index + 1} end date must be the same as or after its start date.`;
+    if (!phase.times || phase.times.length === 0) return `Phase ${index + 1} needs at least one dose time.`;
+  }
+
+  const sorted = [...phases].sort((a, b) => a.start.localeCompare(b.start));
+  let lastEnd = null;
+
+  for (const phase of sorted) {
+    const phaseEnd = phase.end || '9999-12-31';
+    if (lastEnd && phase.start <= lastEnd) {
+      return 'Medication phases must not overlap and should progress chronologically.';
+    }
+    lastEnd = phaseEnd;
+  }
+
+  return null;
+}
+
+function openEditModal(id) {
+  const med = medications.find(m => m.id === id);
+  if (!med) return;
+  editingMedId = id;
+  selectedColor = COLORS.findIndex(c => c.bg === med.color);
+  if (selectedColor < 0) selectedColor = 0;
+  formPhases = JSON.parse(JSON.stringify(med.phases));
+  formPhases.forEach(ph => {
+    ph.foodTiming = ph.foodTiming || {};
+    (ph.times || []).forEach(t => {
+      if (!ph.foodTiming[t]) ph.foodTiming[t] = 'Any';
+    });
+  });
+  document.getElementById('formName').value = med.name;
+  document.getElementById('modalTitle').textContent = 'Edit medication';
+  buildColorSwatches();
+  renderPhases();
+  document.getElementById('medModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('medModal').classList.remove('open');
+}
+
+async function saveMed() {
+  const name = document.getElementById('formName').value.trim();
+  if (!name) { showError('Please enter a medicine name.'); return; }
+
+  const validationError = validatePhases(formPhases);
+  if (validationError) { showError(validationError); return; }
+
+  const color = COLORS[selectedColor];
+  const payload = {
+    name,
+    color: color.bg,
+    textColor: color.text,
+    phases: formPhases
+  };
+
+  try {
+    if (editingMedId) {
+      const updated = await api('PUT', `/api/medications/${editingMedId}`, payload);
+      const idx = medications.findIndex(m => m.id === editingMedId);
+      if (idx > -1) medications[idx] = updated;
+    } else {
+      const created = await api('POST', '/api/medications', payload);
+      medications.push(created);
+    }
+    closeModal();
+    render();
+  } catch (error) {
+    console.error(error);
+    showError('Unable to save medication. Please try again.');
+  }
+}
+
+// Delete
+function askDelete(id) {
+  deleteTarget = id;
+  const med = medications.find(m => m.id === id);
+  document.getElementById('confirmMsg').textContent = `"${med ? med.name : 'this medication'}" will be permanently removed along with all its dose history.`;
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('open');
+  deleteTarget = null;
+}
+
+async function toggleArchive(id, archive) {
+  try {
+    const updated = await api('PUT', `/api/medications/${id}`, { archived: archive });
+    const idx = medications.findIndex(m => m.id === id);
+    if (idx > -1) medications[idx] = updated;
+    render();
+    showSuccess(archive ? 'Medication archived.' : 'Medication restored.');
+  } catch (error) {
+    console.error(error);
+    showError('Unable to update archived status. Please try again.');
+  }
+}
+
+async function confirmDelete() {
+  if (!deleteTarget) return;
+  try {
+    await api('DELETE', `/api/medications/${deleteTarget}`);
+    medications = medications.filter(m => m.id !== deleteTarget);
+    Object.keys(logs).forEach(key => {
+      if (key.includes(`__${deleteTarget}__`)) delete logs[key];
+    });
+    Object.keys(missedDoses).forEach(key => {
+      if (key.includes(`__${deleteTarget}__`)) delete missedDoses[key];
+    });
+    closeConfirm();
+    render();
+  } catch (error) {
+    console.error(error);
+    showError('Unable to delete the medication. Please try again.');
+  }
+}
+
+// Close modals on overlay click
+document.getElementById('medModal').addEventListener('click', e => { if (e.target === document.getElementById('medModal')) closeModal(); });
+document.getElementById('confirmOverlay').addEventListener('click', e => { if (e.target === document.getElementById('confirmOverlay')) closeConfirm(); });
+
+// Init
+loadAll();
+</script>
+</body>
+</html>
